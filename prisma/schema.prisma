@@ -1,0 +1,227 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "../node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  password        String
+  role            String   @default("Staff") // Admin, Partner, Senior, Staff
+  status          String   @default("active") // active, disabled
+  lastLogin       DateTime? @map("last_login")
+  resetToken      String?  @unique @map("reset_token")
+  resetTokenExpiry DateTime? @map("reset_token_expiry")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  clients            Client[]            @relation("CreatedByUser")
+  partnerEngs        Engagement[]        @relation("PartnerEngagements")
+  managerEngs        Engagement[]        @relation("ManagerEngagements")
+  auditTrails        AuditTrail[]        @relation("UserAuditTrails")
+  dataEntries        DataEntry[]         @relation("DataEntryCreator")
+  generatedDocuments GeneratedDocument[] @relation("GeneratedByUser")
+
+  @@map("users")
+}
+
+model Client {
+  id                  String   @id @default(uuid())
+  companyName         String   @map("company_name")
+  registrationNo      String?  @map("registration_no")
+  registeredAddress   String?  @map("registered_address")
+  businessAddress     String?  @map("business_address")
+  industry            String?
+  director1Name       String?  @map("director1_name")
+  director1Nric       String?  @map("director1_nric")
+  director1Designation String? @default("Director") @map("director1_designation")
+  director2Name       String?  @map("director2_name")
+  director2Nric       String?  @map("director2_nric")
+  director2Designation String?  @map("director2_designation")
+  contactName         String?  @map("contact_name")
+  contactEmail        String?  @map("contact_email")
+  contactPhone        String?  @map("contact_phone")
+  status              String   @default("active") // active, archived
+  createdById         String?  @map("created_by")
+  createdBy           User?    @relation("CreatedByUser", fields: [createdById], references: [id])
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  engagements        Engagement[]
+  dataEntries        DataEntry[]
+  generatedDocuments GeneratedDocument[] @relation("ClientDocuments")
+
+  @@map("clients")
+}
+
+model Engagement {
+  id               String   @id @default(uuid())
+  clientId         String   @map("client_id")
+  client           Client   @relation(fields: [clientId], references: [id])
+  financialYear    Int      @map("financial_year")
+  periodStart      DateTime? @map("period_start")
+  periodEnd        DateTime? @map("period_end")
+  engagementType   String?  @map("engagement_type")
+  partnerId        String?  @map("partner_id")
+  partner          User?    @relation("PartnerEngagements", fields: [partnerId], references: [id])
+  managerId        String?  @map("manager_id")
+  manager          User?    @relation("ManagerEngagements", fields: [managerId], references: [id])
+  status           String   @default("In Progress") // In Progress, Completed, On Hold
+  docsGeneratedCount Int    @default(0) @map("docs_generated_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  dataEntries        DataEntry[]
+  generatedDocuments GeneratedDocument[]
+
+  @@map("engagements")
+}
+
+model DataEntry {
+  id                  String    @id @default(uuid())
+  engagementId        String    @unique @map("engagement_id")
+  engagement          Engagement @relation(fields: [engagementId], references: [id])
+  clientId            String    @map("client_id")
+  client              Client    @relation(fields: [clientId], references: [id])
+  fyEndDate           DateTime? @map("fy_end_date")
+  auditPeriod         String?   @map("audit_period")
+  registeredAddress   String?   @map("registered_address")
+  businessAddress     String?   @map("business_address")
+  engagementPartner   String?   @map("engagement_partner")
+  managerInCharge     String?   @map("manager_in_charge")
+  director1Name       String?   @map("director1_name")
+  director1Nric       String?   @map("director1_nric")
+  director1Designation String?  @map("director1_designation")
+  director2Name       String?   @map("director2_name")
+  director2Nric       String?   @map("director2_nric")
+  director2Designation String?  @map("director2_designation")
+  bankName            String?   @map("bank_name")
+  accountNumber       String?   @map("account_number")
+  bankBranch          String?   @map("bank_branch")
+  balanceDate         DateTime? @map("balance_date")
+  solicitorFirm       String?   @map("solicitor_firm")
+  solicitorRef        String?   @map("solicitor_ref")
+  hpCompany           String?   @map("hp_company")
+  hpRef               String?   @map("hp_ref")
+  isLocked            Boolean   @default(false) @map("is_locked")
+  createdById         String?   @map("created_by")
+  createdBy           User?     @relation("DataEntryCreator", fields: [createdById], references: [id])
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  debtorsCreditors    DebtorCreditor[]
+  relatedParties      RelatedParty[]
+
+  @@map("data_entries")
+}
+
+model DebtorCreditor {
+  id          String    @id @default(uuid())
+  dataEntryId String    @map("data_entry_id")
+  dataEntry   DataEntry @relation(fields: [dataEntryId], references: [id], onDelete: Cascade)
+  name        String?
+  amount      Decimal?  @db.Decimal(15, 2)
+  type        String?   // Debtor, Creditor
+  reference   String?
+
+  @@map("debtors_creditors")
+}
+
+model RelatedParty {
+  id                  String    @id @default(uuid())
+  dataEntryId         String    @map("data_entry_id")
+  dataEntry           DataEntry @relation(fields: [dataEntryId], references: [id], onDelete: Cascade)
+  companyName         String?   @map("company_name")
+  relationship        String?
+  amount              Decimal?  @db.Decimal(15, 2)
+  natureOfTransaction String?   @map("nature_of_transaction")
+
+  @@map("related_parties")
+}
+
+model GeneratedDocument {
+  id             String    @id @default(uuid())
+  engagementId   String    @map("engagement_id")
+  engagement     Engagement @relation(fields: [engagementId], references: [id])
+  clientId       String    @map("client_id")
+  client         Client    @relation("ClientDocuments", fields: [clientId], references: [id])
+  documentType   String    @map("document_type")
+  generatedById  String?   @map("generated_by")
+  generatedBy    User?     @relation("GeneratedByUser", fields: [generatedById], references: [id])
+  generatedAt    DateTime  @default(now()) @map("generated_at")
+  emailSent      Boolean   @default(false) @map("email_sent")
+  emailSentAt    DateTime? @map("email_sent_at")
+  emailRecipient String?   @map("email_recipient")
+  emailSubject   String?   @map("email_subject")
+
+  @@map("generated_documents")
+}
+
+model AuditTrail {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation("UserAuditTrails", fields: [userId], references: [id])
+  userName  String?  @map("user_name")
+  action    String   // LOGIN, LOGOUT, CREATE, UPDATE, GENERATE, DELETE
+  module    String?  // Dashboard, Clients, Engagements, etc.
+  details   String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_trail")
+}
+
+model BrandingSettings {
+  id              String   @id @default(uuid())
+  firmName        String   @default("Kudos & Associates") @map("firm_name")
+  firmTagline     String?  @map("firm_tagline")
+  firmAddress     String?  @map("firm_address")
+  firmPhone       String?  @map("firm_phone")
+  firmEmail       String?  @map("firm_email")
+  firmWebsite     String?  @map("firm_website")
+  logoBase64      String?  @map("logo_base64")
+  primaryColor    String   @default("#0D1F29") @map("primary_color")
+  accentColor     String   @default("#2A73E4") @map("accent_color")
+  fontFamily      String   @default("Inter") @map("font_family")
+  showLogoOnDocs  Boolean  @default(true) @map("show_logo_on_docs")
+  showAddressOnDocs Boolean @default(true) @map("show_address_on_docs")
+  footerText      String?  @map("footer_text")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("branding_settings")
+}
+
+model SystemSettings {
+  id          String   @id @default(uuid())
+  settingKey  String   @unique @map("setting_key")
+  settingValue String  @map("setting_value")
+  category    String   @default("general") // general, documents, notifications, backup
+  label       String?
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model DocumentTemplate {
+  id            String   @id @default(uuid())
+  name          String
+  documentType  String   @map("document_type")
+  description   String?
+  content       String   @db.Text // Template content with placeholders
+  placeholders  String?  @db.Text // JSON array of placeholder keys
+  version       Int      @default(1)
+  isActive      Boolean  @default(true) @map("is_active")
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdById   String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("document_templates")
+}

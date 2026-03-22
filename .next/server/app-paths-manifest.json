@@ -1,0 +1,14 @@
+{
+  "/api/clients/[id]/route": "app/api/clients/[id]/route.js",
+  "/api/engagements/[id]/route": "app/api/engagements/[id]/route.js",
+  "/api/documents/generate/route": "app/api/documents/generate/route.js",
+  "/api/email/send/route": "app/api/email/send/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/documents/status/route": "app/api/documents/status/route.js",
+  "/api/documents/download/route": "app/api/documents/download/route.js",
+  "/(app)/clients/page": "app/(app)/clients/page.js",
+  "/(app)/clients/[id]/page": "app/(app)/clients/[id]/page.js",
+  "/(app)/data-entry/[engagementId]/page": "app/(app)/data-entry/[engagementId]/page.js",
+  "/(app)/settings/page": "app/(app)/settings/page.js",
+  "/(app)/documents/[engagementId]/page": "app/(app)/documents/[engagementId]/page.js"
+}

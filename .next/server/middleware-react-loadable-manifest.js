@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"app/(app)/dashboard/page.tsx -> ./top-clients-chart\":{\"id\":\"app/(app)/dashboard/page.tsx -> ./top-clients-chart\",\"files\":[\"static/chunks/_app-pages-browser_app_app_dashboard_top-clients-chart_tsx.js\"]}}"
